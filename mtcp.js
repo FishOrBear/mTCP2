@@ -111,7 +111,7 @@ class MSocket extends stream_1.Duplex {
         conn.setNoDelay(true);
         conn.on("error", err => {
             if (this.readyState === "open" || this.readyState === "opening")
-                console.log(`ms conn(cid:${conn.cid},mid:${this.cid}:${port}) link error:${err.message} w:${conn.bytesWritten} r:${conn.bytesRead}`);
+                console.error(`mtcp conn(cid:${conn.cid},mid:${this.cid}:${port}) link error:${err.message} w:${conn.bytesWritten} r:${conn.bytesRead}`);
         });
         conn.once("data", (buffer) => {
             if (!conn.cid) //未登录
@@ -293,7 +293,7 @@ function createMTcpServer(connectionListener) {
     return (0, net_1.createServer)((conn) => {
         while (msocketMap.has(cid_index)) {
             cid_index++;
-            if (cid_index === 65535)
+            if (cid_index === 65000)
                 cid_index = 1;
         }
         conn.cid = cid_index++;
