@@ -82,6 +82,26 @@ module.exports = {
 
 ```
 
+3.使用systemd启动(避免pm2占用70M左右的内存)
+参考:[阮一峰教程](https://www.ruanyifeng.com/blog/2016/03/node-systemd-tutorial.html)
+```
+[Unit]
+Description=mtcp
+
+[Service]
+ExecStart=/root/.nvm/versions/node/v20.18.0/bin/node ./remote.js
+Restart=always
+RestartSec=1
+User=root
+Group=root
+Environment=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=NODE_ENV=production
+WorkingDirectory=/home/mtcp/
+
+[Install]
+WantedBy=multi-user.target
+```
+
 # 性能测试
 ```
 没有mTCP 单线程tcp 20m/s
