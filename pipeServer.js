@@ -19,12 +19,14 @@ function createPipeServer(upstream_port, upstream_host, pipe_type = PipeType.tcp
             up_socket.pipe(conn, { end: true });
             conn.pipe(up_socket, { end: true });
         });
-        conn.on('error', err => {
-            console.log("local error", err.message);
-        });
-        up_socket.on('error', (err) => {
-            console.log("up error", err.message);
-        });
+        const destroy = () => {
+            up_socket.destroySoon();
+            conn.destroySoon();
+        };
+        conn.on('error', destroy);
+        up_socket.on('error', destroy);
+        conn.on('close', destroy);
+        up_socket.on('close', destroy);
     });
     if (lisent_port) {
         server.listen(lisent_port, () => {
