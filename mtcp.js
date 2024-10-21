@@ -12,7 +12,7 @@ var PackageIndex;
     PackageIndex[PackageIndex["pid"] = 2] = "pid";
 })(PackageIndex || (PackageIndex = {}));
 class MSocket extends stream_1.Duplex {
-    static PoolCount = 4;
+    static PoolCount = 2;
     cid;
     poolCount = MSocket.PoolCount;
     conns = [];
@@ -293,10 +293,10 @@ function createMTcpServer(connectionListener) {
     return (0, net_1.createServer)((conn) => {
         while (msocketMap.has(cid_index)) {
             cid_index++;
-            if (cid_index === 65000)
-                cid_index = 1;
         }
         conn.cid = cid_index++;
+        if (cid_index === 65000)
+            cid_index = 1;
         conn.on("error", (err) => {
             console.log(`error:mid:${conn.mid} cid:${conn.cid} ${err.message}`);
         });
