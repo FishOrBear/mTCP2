@@ -81,8 +81,12 @@ class MSocket extends stream_1.Duplex {
         return super.destroy(error);
     }
     connect(port, host, connectionListener) {
-        for (let i = 0; i < this.poolCount; i++)
-            this.connectSub(port, host, connectionListener);
+        for (let i = 0; i < this.poolCount; i++) {
+            if (i === 0)
+                this.connectSub(port, host, connectionListener);
+            else
+                setTimeout(() => this.connectSub(port, host, connectionListener), i * 50);
+        }
         return this;
     }
     //连接子流
@@ -94,7 +98,7 @@ class MSocket extends stream_1.Duplex {
             buffer.writeUint16BE(this.cid, 2);
             conn.write(buffer, err => {
                 if (err)
-                    console.error("login err:", err.message);
+                    console.error(`login err: ${host}:${port} ${err.message}`);
                 else {
                     if (this.readyState === "opening") {
                         this.readyState = "open";
@@ -111,7 +115,7 @@ class MSocket extends stream_1.Duplex {
         conn.setNoDelay(true);
         conn.on("error", err => {
             if (this.readyState === "open" || this.readyState === "opening")
-                console.error(`mtcp conn(cid:${conn.cid},mid:${this.cid}:${port}) link error:${err.message} w:${conn.bytesWritten} r:${conn.bytesRead}`);
+                console.error(`mtcp conn(cid:${conn.cid},mid:${this.cid}:${port}) ${host}:${port} link error:${err.message} w:${conn.bytesWritten} r:${conn.bytesRead}`);
         });
         conn.once("data", (buffer) => {
             if (!conn.cid) //未登录
