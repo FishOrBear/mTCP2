@@ -5,6 +5,7 @@ exports.createMTcpServer = createMTcpServer;
 exports.connectMTcp = connectMTcp;
 const net_1 = require("net");
 const stream_1 = require("stream");
+const debug_tcp_error_log = false;
 const HEADER_LENGTH = 4;
 var PackageIndex;
 (function (PackageIndex) {
@@ -28,7 +29,7 @@ class MSocket extends stream_1.Duplex {
     noDelay = false;
     constructor(opts) {
         super({
-            highWaterMark: 1,
+            //highWaterMark: 1,
             allowHalfOpen: false, //和net.socket差不多
             ...opts,
         });
@@ -97,8 +98,10 @@ class MSocket extends stream_1.Duplex {
             buffer.writeUint16BE(conn.cid + 100);
             buffer.writeUint16BE(this.cid, 2);
             conn.write(buffer, err => {
-                if (err)
-                    console.error(`login err: ${host}:${port} ${err.message}`);
+                if (err) {
+                    if (debug_tcp_error_log)
+                        console.error(`login err: ${host}:${port} ${err.message}`);
+                }
                 else {
                     if (this.readyState === "opening") {
                         this.readyState = "open";
@@ -114,8 +117,9 @@ class MSocket extends stream_1.Duplex {
         conn.setKeepAlive(true, 10000);
         conn.setNoDelay(true);
         conn.on("error", err => {
-            if (this.readyState === "open" || this.readyState === "opening")
-                console.error(`mtcp conn(cid:${conn.cid},mid:${this.cid}:${port}) ${host}:${port} link error:${err.message} w:${conn.bytesWritten} r:${conn.bytesRead}`);
+            if (debug_tcp_error_log)
+                if (this.readyState === "open" || this.readyState === "opening")
+                    console.error(`mtcp conn(cid:${conn.cid},mid:${this.cid}:${port}) ${host}:${port} link error:${err.message} w:${conn.bytesWritten} r:${conn.bytesRead}`);
         });
         conn.once("data", (buffer) => {
             if (!conn.cid) //未登录
@@ -256,7 +260,6 @@ class MSocket extends stream_1.Duplex {
     _final(callback) {
         callback();
     }
-    _writeConnIndex = 0;
     writeBufferPack(buffer, retryCount = 0) {
         if (this.destroyed)
             return;
@@ -264,26 +267,22 @@ class MSocket extends stream_1.Duplex {
             this.emit("error", new Error("writeBufferPack conn0"));
             return;
         }
-        if (this._writeConnIndex >= this.conns.length)
-            this._writeConnIndex = 0;
-        let conn = this.conns[this._writeConnIndex];
-        if (conn.full) //选择合理的连接
-         {
-            this._writeConnIndex++;
-            if (this._writeConnIndex >= this.conns.length)
-                this._writeConnIndex = 0;
-            conn = this.conns[this._writeConnIndex];
-        }
+        //选择一个可写的连接
+        let conn = this.conns.reduce((m, c) => m.writableLength < c.writableLength ? m : c);
         let sendOk = conn.write(buffer, err => {
             if (err) {
-                console.log("write err:", err.message);
+                if (debug_tcp_error_log)
+                    console.log("write err:", err.message);
                 if (retryCount < 2)
                     this.writeBufferPack(buffer, ++retryCount); //重试
                 else
                     this.destroy();
             }
-            else
+            else {
                 this.writableLength -= buffer.length; //计算写入数量
+                conn.full = false; //标记未满
+                this.emit("drain");
+            }
         });
         this.writableLength += buffer.length; //计算写入数量
         if (!sendOk)
@@ -302,12 +301,13 @@ function createMTcpServer(connectionListener) {
         }
         conn.cid = cid_index;
         conn.on("error", (err) => {
-            console.log(`error:mid:${conn.mid} cid:${conn.cid} ${err.message}`);
+            if (debug_tcp_error_log)
+                console.log(`error:mid:${conn.mid} cid:${conn.cid} ${err.message}`);
         });
         let buffer = Buffer.alloc(2);
         buffer.writeUint16BE(conn.cid);
         conn.write(buffer, err => {
-            if (err)
+            if (err && debug_tcp_error_log)
                 console.log(`login write error cid:${conn.cid} ${err.message}`);
         });
         conn.once("data", buffer => {
