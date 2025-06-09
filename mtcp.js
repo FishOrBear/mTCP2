@@ -82,11 +82,12 @@ class MSocket extends stream_1.Duplex {
         return super.destroy(error);
     }
     connect(port, host, connectionListener) {
-        for (let i = 0; i < this.poolCount; i++) {
+        const isArray = Array.isArray(host);
+        for (let i = 0; i < (isArray ? host.length : this.poolCount); i++) {
             if (i === 0)
-                this.connectSub(port, host, connectionListener);
+                this.connectSub(port, isArray ? host[i] : host, connectionListener);
             else
-                setTimeout(() => this.connectSub(port, host, connectionListener), i * 50);
+                setTimeout(() => this.connectSub(port, isArray ? host[i] : host, connectionListener), i * 50);
         }
         return this;
     }
